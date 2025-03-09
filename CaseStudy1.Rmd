@@ -1,0 +1,343 @@
+---
+title: "CaseStudy1"
+author: "Devin Streeter"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r, echo=TRUE}
+library(tidyverse)
+library(ggplot2)
+library(class)
+library(caret)
+library(e1071)
+
+
+#Load
+df <- read.csv("C:/Users/Eight/Desktop/CaseStudy1/Data/CaseStudy1-data.csv", stringsAsFactors = TRUE)
+
+#Inspect
+#head(df)
+#str(df)
+#summary(df)
+#colSums(is.na(df))
+
+#EDA
+#Select numerical variables
+numeric_features <- df %>% 
+  select(where(is.numeric), -ID, -EmployeeNumber, -StandardHours, -EmployeeCount) %>%
+  colnames()
+
+#Dataframe for results
+ttest_results <- data.frame(
+  Feature = character(),
+  P_Value = numeric(),
+  Mean_Yes = numeric(),
+  Mean_No = numeric())
+
+#Loop for ttests
+for (feature in numeric_features) {
+  ttest <- t.test(df[[feature]] ~ df$Attrition)
+  means <- unname(ttest$estimate)
+  ttest_results <- rbind(ttest_results, data.frame(
+    Feature = feature,
+    P_Value = ttest$p.value,
+    Mean_Yes = means[2],
+    Mean_No = means[1]
+  ))}
+
+#results
+#print
+#Round values and format
+ttest_results$P_Value <- formatC(ttest_results$P_Value, format = "e", digits = 5)
+ttest_results$Mean_Yes <- formatC(ttest_results$Mean_Yes, format = "f", digits = 2, big.mark = ",")
+ttest_results$Mean_No <- formatC(ttest_results$Mean_No, format = "f", digits = 2, big.mark = ",")
+
+#Print
+print(ttest_results, row.names = FALSE)
+
+
+#Plotting
+#df %>% select(Age, MonthlyIncome, DistanceFromHome, YearsAtCompany, TotalWorkingYears, StockOptionLevel, Attrition) %>%
+#  gather(key = "Variable", value = "Value", -Attrition) %>%
+#  ggplot(aes(x = Value, fill = Attrition)) +
+#  geom_histogram(position = "identity", bins = 30, alpha = 0.5) + 
+#  facet_wrap(~Variable, scales = "free")
+
+
+#df %>% select(Age, WorkLifeBalance, JobSatisfaction, JobLevel, YearsAtCompany, JobInvolvement, Attrition) %>%
+#  gather(key = "Variable", value = "Value", -Attrition) %>%
+#  ggplot(aes(x = Value, fill = Attrition)) +
+#  geom_histogram(position = "identity", bins = 30, alpha = 0.5) + 
+#  facet_wrap(~Variable, scales = "free")
+
+#Attrition yes/no
+#Df to add %
+attrition_summary <- df %>%
+  group_by(Attrition) %>%
+  summarise(count = n()) %>%
+  mutate(percent = 100 * count / sum(count))
+
+#Bar plot
+ggplot(attrition_summary, aes(x = Attrition, y = count, fill = Attrition)) +
+  geom_bar(stat = "identity", alpha = 0.7) +
+  geom_text(aes(label = sprintf("%d (%.1f%%)", count, percent)),
+            vjust = -0.5, size = 5) +
+  labs(title = "Attrition Count: Yes vs No", x = "Attrition", y = "Count") +
+  scale_fill_manual(values = c("No" = "blue", "Yes" = "red")) +
+  theme(legend.position = "none")
+
+#OverTime vs. Attrition
+#Create df and add %
+df_summary_ot <- df %>%
+  filter(Attrition == "Yes") %>%         
+  group_by(OverTime) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  mutate(percent = 100 * count / sum(count))
+
+#Plot
+ggplot(df_summary_ot, aes(x = OverTime, y = count, fill = OverTime)) +
+  geom_bar(stat = "identity", alpha = 0.7) +
+  geom_text(aes(label = sprintf("%d (%.1f%%)", count, percent)), 
+            vjust = -0.5) +
+  labs(title = "Attrition Distribution by OverTime", 
+       x = "OverTime", 
+       y = "Count") +
+  scale_fill_manual(values = c("No" = "blue", "Yes" = "red")) +
+  theme(legend.position = "none")
+
+
+#JobRole vs. Attrition
+#Create df to add %
+df_summary_job <- df %>%
+  filter(Attrition == "Yes") %>%
+  group_by(JobRole) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  mutate(percent = 100 * count / sum(count))
+
+#Plot
+ggplot(df_summary_job, aes(x = JobRole, y = count)) +
+  geom_bar(stat = "identity", fill = "red", alpha = 0.7) +
+  geom_text(aes(label = sprintf("%d (%.1f%%)", count, percent)),
+            vjust = -0.5, size = 3) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Attrition Distribution by Job Role", x = "JobRole", y = "Count")
+
+#MonthlyIncome vs. Attrition
+ggplot(df, aes(x = Attrition, y = MonthlyIncome, color = Attrition)) +
+  geom_jitter(width = 0.2, alpha = 0.6) +
+  labs(title = "Monthly Income vs. Attrition", x = "Attrition", y = "Monthly Income") +
+  theme(legend.position = "none") +
+  scale_color_manual(values = c("No" = "blue", "Yes" = "red"))
+
+#JobInvolvement vs. Attrition
+#create df add %
+job_involvement_summary <- df %>%
+  group_by(JobInvolvement, Attrition) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  group_by(JobInvolvement) %>%
+  mutate(percent = 100 * count / sum(count)) %>%
+  filter(Attrition == "Yes") %>%
+  ungroup()
+
+ggplot(job_involvement_summary, aes(x = factor(JobInvolvement), y = count, fill = Attrition)) +
+  geom_bar(stat = "identity", alpha = 0.7, fill = "red") +
+  geom_text(aes(label = sprintf("%d (%.1f%%)", count, percent)), vjust = -0.5, size = 4) +
+  labs(title = "Attrition Distribution by Job Involvement", x = "Job Involvement Level", y = "Count") +
+  theme(legend.position = "none")
+
+#TotalWorkingYears vs. Attrition
+ggplot(df, aes(x = Attrition, y = TotalWorkingYears, color = Attrition)) +
+  geom_jitter(width = 0.2, alpha = 0.6) +
+  labs(title = "Total Working Years vs. Attrition", x = "Attrition", y = "Total Working Years") +
+  theme(legend.position = "none") +
+  scale_color_manual(values = c("No" = "blue", "Yes" = "red"))
+
+#DistanceFromHome vs. Attrition
+ggplot(df, aes(x = Attrition, y = DistanceFromHome, color = Attrition)) +
+  geom_jitter(width = 0.2, alpha = 0.6) +
+  labs(title = "Distance From Home vs. Attrition", x = "Attrition", y = "Distance From Home") +
+  theme(legend.position = "none") +
+  scale_color_manual(values = c("No" = "blue", "Yes" = "red"))
+
+#StockOptionLevel vs. Attrition
+#Create df add %
+stock_option_summary <- df %>%
+  group_by(StockOptionLevel, Attrition) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  group_by(StockOptionLevel) %>%
+  mutate(percent = 100 * count / sum(count)) %>%
+  filter(Attrition == "Yes") %>%
+  ungroup()
+
+ggplot(stock_option_summary, aes(x = factor(StockOptionLevel), y = count, fill = Attrition)) +
+  geom_bar(stat = "identity", alpha = 0.7, fill = "red") +
+  geom_text(aes(label = sprintf("%d (%.1f%%)", count, percent)), vjust = -0.5, size = 5) +
+  labs(title = "Attrition Distribution by Stock Option Level", x = "Stock Option Level", y = "Count") +
+  theme(legend.position = "none")
+
+#Age vs. Attrition
+ggplot(df, aes(x = Attrition, y = Age, color = Attrition)) +
+  geom_jitter(width = 0.2, alpha = 0.6) +
+  labs(title = "Age vs. Attrition", x = "Attrition", y = "Age") +
+  theme(legend.position = "none") +
+  scale_color_manual(values = c("No" = "blue", "Yes" = "red"))
+
+#Define Costs
+CostPerAttrition <- mean(df$MonthlyIncome) * 12 * 0.6  
+CostPerRetentionIncentive <- 200
+
+#Model Creation
+set.seed(7)
+#KNN
+feature_df <- df %>%
+  select(OverTime, JobRole, DistanceFromHome, MonthlyIncome, JobInvolvement, 
+         TotalWorkingYears, StockOptionLevel, Age, Attrition)
+
+#Convert
+feature_df <- feature_df %>%
+  mutate(
+    OverTime = as.numeric(as.factor(OverTime)),  
+    JobRole = as.numeric(as.factor(JobRole)),  
+    Attrition = as.factor(Attrition),
+    StockOptionLevel = as.numeric(StockOptionLevel))
+
+#Standardize
+feature_df_scaled <- feature_df %>% mutate(across(where(is.numeric), scale))
+
+#Train-Test
+trainIndex <- createDataPartition(feature_df_scaled$Attrition, p = 0.7, list = FALSE)
+train_data <- feature_df_scaled[trainIndex, ]
+test_data <- feature_df_scaled[-trainIndex, ]
+
+train_x <- train_data %>% select(-Attrition)
+train_y <- train_data$Attrition
+test_x <- test_data %>% select(-Attrition)
+test_y <- test_data$Attrition
+
+#Best k
+iterations <- 10  
+numks <- 20  
+masterAcc <- matrix(nrow = iterations, ncol = numks)
+
+for (j in 1:iterations) {
+  for (i in 1:numks) {
+    knn_pred <- knn.cv(train_x, train_y, k = i)
+    CM <- confusionMatrix(table(train_y, knn_pred))
+    masterAcc[j, i] <- CM$overall[1]
+  }
+}
+
+MeanAcc <- colMeans(masterAcc)
+plot(seq(1, numks, 1), MeanAcc, type = "l", col = "blue", lwd = 2, xlab = "k", ylab = "Accuracy")
+
+best_k <- which.max(MeanAcc)
+print(paste("Best k:", best_k))
+
+#Final KNN
+final_knn <- knn(train_x, test_x, train_y, k = best_k, prob = TRUE)
+probs <- ifelse(final_knn == "Yes", attributes(final_knn)$prob, 1 - attributes(final_knn)$prob)
+
+threshold <- 0.15
+NewClass <- ifelse(probs > threshold, "Yes", "No")
+NewClass <- factor(NewClass, levels = levels(test_y))
+
+CM_Final <- confusionMatrix(NewClass, test_y)
+print(CM_Final)
+
+#Apply KNN Model to Entire Dataset
+full_knn <- knn(train = feature_df_scaled %>% select(-Attrition),
+                test = feature_df_scaled %>% select(-Attrition),
+                cl = feature_df_scaled$Attrition,
+                k = best_k, prob = TRUE)
+full_probs <- ifelse(full_knn == "Yes", attributes(full_knn)$prob, 1 - attributes(full_knn)$prob)
+full_predictions <- ifelse(full_probs > threshold, "Yes", "No")
+full_predictions <- factor(full_predictions, levels = levels(feature_df_scaled$Attrition))
+CM_FullKNN <- confusionMatrix(full_predictions, feature_df_scaled$Attrition)
+print(CM_FullKNN)
+
+#Predicted Cost for KNN
+TP_FullKNN <- CM_FullKNN$table[2,2]
+FN_FullKNN <- CM_FullKNN$table[1,2]
+FP_FullKNN <- CM_FullKNN$table[2,1]
+
+AttritionCost_FullKNN <- ((TP_FullKNN + FN_FullKNN) * CostPerAttrition)
+print(paste("Predicted cost before model (KNN full): $", formatC(AttritionCost_FullKNN, format = "f", big.mark = ",")))
+
+PredictedCost_FullKNN <- (FN_FullKNN * CostPerAttrition) + (FP_FullKNN * CostPerRetentionIncentive)
+print(paste("Predicted Cost of Model Error (KNN full): $", formatC(PredictedCost_FullKNN, format = "f", big.mark = ",")))
+
+RetentionCost_FullKNN <- (TP_FullKNN * CostPerRetentionIncentive) + (FP_FullKNN * CostPerRetentionIncentive)
+print(paste("Predicted Expended on Retention Incentives (KNN full): $", formatC(RetentionCost_FullKNN, format = "f", big.mark = ",")))
+
+PotentialAttritionCost_FullKNN <- (TP_FullKNN * CostPerRetentionIncentive) + (FP_FullKNN * CostPerRetentionIncentive) + (FN_FullKNN * CostPerAttrition)
+print(paste("Total Cost after Model (KNN full): $", formatC(PotentialAttritionCost_FullKNN, format = "f", big.mark = ",")))
+
+#NB
+modelNB <- naiveBayes(train_x, train_y)
+
+probsNB <- predict(modelNB, test_x, type = "raw")
+
+#Custom threshold
+threshold <- 0.2
+
+#Assign predictions
+predictionsNB <- ifelse(probsNB[, "Yes"] > threshold, "Yes", "No")
+
+predictionsNB <- factor(predictionsNB, levels = levels(test_y))
+
+#Confusion Matrix
+CMNB <- confusionMatrix(predictionsNB, test_y)
+print(CMNB)
+
+#Apply NB Model to Dataset
+full_probsNB <- predict(modelNB, feature_df_scaled %>% select(-Attrition), type = "raw")
+full_predictionsNB <- ifelse(full_probsNB[, "Yes"] > threshold, "Yes", "No")
+full_predictionsNB <- factor(full_predictionsNB, levels = levels(feature_df_scaled$Attrition))
+CM_FullNB <- confusionMatrix(full_predictionsNB, feature_df_scaled$Attrition)
+print(CM_FullNB)
+
+#Predicted Cost for NB
+TP_FullNB <- CM_FullNB$table[2,2]
+FN_FullNB <- CM_FullNB$table[1,2]
+FP_FullNB <- CM_FullNB$table[2,1]
+
+AttritionCost_FullNB <- ((TP_FullNB + FN_FullNB) * CostPerAttrition)
+print(paste("Predicted cost before model (NB): $", formatC(AttritionCost_FullNB, format = "f", big.mark = ",")))
+
+PredictedCost_FullNB <- (FN_FullNB * CostPerAttrition) + (FP_FullNB * CostPerRetentionIncentive)
+print(paste("Predicted Cost of Model Error (NB): $", formatC(PredictedCost_FullNB, format = "f", big.mark = ",")))
+
+RetentionCost_FullNB <- (TP_FullNB * CostPerRetentionIncentive) + (FP_FullNB * CostPerRetentionIncentive)
+print(paste("Predicted Expended on Retention Incentives (NB): $", formatC(RetentionCost_FullNB, format = "f", big.mark = ",")))
+
+PotentialAttritionCost_FullNB <- (TP_FullNB * CostPerRetentionIncentive) + (FP_FullNB * CostPerRetentionIncentive) + (FN_FullNB * CostPerAttrition)
+print(paste("Total Cost after Model (NB): $", formatC(PotentialAttritionCost_FullNB, format = "f", big.mark = ",")))
+
+
+#Load the comp dataset
+comp_set <- read.csv("C:/Users/Eight/Desktop/CaseStudy1/Data/CaseStudy1CompSet No Attrition.csv", stringsAsFactors = TRUE)
+
+#Convert variables
+comp_set <- comp_set %>%
+  mutate(
+    OverTime = as.numeric(as.factor(OverTime)),  
+    JobRole = as.numeric(as.factor(JobRole)),  
+    StockOptionLevel = as.numeric(StockOptionLevel)
+  )
+
+#Standardize numerical features
+comp_set_scaled <- comp_set %>%
+  mutate(across(where(is.numeric), scale))
+
+#Select relevant features
+comp_x <- comp_set_scaled
+
+#Apply NB Model
+nb_probs <- predict(modelNB, comp_x, type = "raw")
+
+#Assign predictions
+comp_set$Predicted_Attrition <- ifelse(nb_probs[, "Yes"] > threshold, "Yes", "No")
+
+#Save the updated dataset
+write.csv(comp_set, "C:/Users/Eight/Desktop/CaseStudy1/Data/CaseStudy1CompSet_Predictions.csv", row.names = FALSE)
