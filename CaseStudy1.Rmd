@@ -338,6 +338,7 @@ nb_probs <- predict(modelNB, comp_x, type = "raw")
 
 #Assign predictions
 comp_set$Predicted_Attrition <- ifelse(nb_probs[, "Yes"] > threshold, "Yes", "No")
+output <- comp_set %>% select(ID, Attrition = Predicted_Attrition)
 
 #Save the updated dataset
-write.csv(comp_set, "C:/Users/Eight/Desktop/CaseStudy1/Data/CaseStudy1CompSet_Predictions.csv", row.names = FALSE)
+write.csv(output, "C:/Users/Eight/Desktop/CaseStudy1/Data/CaseStudy1PredictionsStreeter Attrition.csv", row.names = FALSE)
