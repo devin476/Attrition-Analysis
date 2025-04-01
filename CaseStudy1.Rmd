@@ -90,19 +90,22 @@ ggplot(attrition_summary, aes(x = Attrition, y = count, fill = Attrition)) +
 #OverTime vs. Attrition
 #Create df and add %
 df_summary_ot <- df %>%
-  filter(Attrition == "Yes") %>%         
   group_by(OverTime) %>%
-  summarise(count = n(), .groups = "drop") %>%
-  mutate(percent = 100 * count / sum(count))
+  summarise(
+    total = n(),
+    left = sum(Attrition == "Yes"),
+    percent = 100 * left / total,
+    .groups = "drop"
+  )
 
 #Plot
-ggplot(df_summary_ot, aes(x = OverTime, y = count, fill = OverTime)) +
+ggplot(df_summary_ot, aes(x = OverTime, y = left, fill = OverTime)) +
   geom_bar(stat = "identity", alpha = 0.7) +
-  geom_text(aes(label = sprintf("%d (%.1f%%)", count, percent)), 
+  geom_text(aes(label = sprintf("%d (%.1f%%)", left, percent)),
             vjust = -0.5) +
-  labs(title = "Attrition Distribution by OverTime", 
-       x = "OverTime", 
-       y = "Count") +
+  labs(title = "Attrition Count and Rate by OverTime",
+       x = "OverTime",
+       y = "Number of Employees Left") +
   scale_fill_manual(values = c("No" = "blue", "Yes" = "red")) +
   theme(legend.position = "none")
 
@@ -110,25 +113,30 @@ ggplot(df_summary_ot, aes(x = OverTime, y = count, fill = OverTime)) +
 #JobRole vs. Attrition
 #Create df to add %
 df_summary_job <- df %>%
-  filter(Attrition == "Yes") %>%
   group_by(JobRole) %>%
-  summarise(count = n(), .groups = "drop") %>%
-  mutate(percent = 100 * count / sum(count))
+  summarise(
+    total = n(),
+    left = sum(Attrition == "Yes"),
+    percent = 100 * left / total,
+    .groups = "drop")
 
 #Plot
-ggplot(df_summary_job, aes(x = JobRole, y = count)) +
+ggplot(df_summary_job, aes(x = reorder(JobRole, left), y = left)) +
   geom_bar(stat = "identity", fill = "red", alpha = 0.7) +
-  geom_text(aes(label = sprintf("%d (%.1f%%)", count, percent)),
-            vjust = -0.5, size = 3) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(title = "Attrition Distribution by Job Role", x = "JobRole", y = "Count")
+  geom_text(aes(label = sprintf("%d (%.1f%%)", left, percent)),
+            hjust = -0.1, size = 3) +
+  coord_flip() +
+  labs(title = "Attrition Count and Rate by Job Role",
+       x = "Job Role", y = "Number of Employees Left") 
 
-#MonthlyIncome vs. Attrition
-ggplot(df, aes(x = Attrition, y = MonthlyIncome, color = Attrition)) +
-  geom_jitter(width = 0.2, alpha = 0.6) +
-  labs(title = "Monthly Income vs. Attrition", x = "Attrition", y = "Monthly Income") +
-  theme(legend.position = "none") +
-  scale_color_manual(values = c("No" = "blue", "Yes" = "red"))
+#Distance from Home vs. Attrition
+ggplot(df, aes(x = Attrition, y = DistanceFromHome, fill = Attrition)) +
+  geom_boxplot(alpha = 0.5) +
+  stat_summary(fun = mean, geom = "point", shape = 20, size = 4, color = "black") +
+  labs(title = "Distance From Home by Attrition Status",
+       x = "Attrition", y = "Distance From Home") +
+  scale_fill_manual(values = c("No" = "blue", "Yes" = "red")) +
+  theme(legend.position = "none")
 
 #JobInvolvement vs. Attrition
 #create df add %
@@ -147,13 +155,16 @@ ggplot(job_involvement_summary, aes(x = factor(JobInvolvement), y = count, fill 
   theme(legend.position = "none")
 
 #TotalWorkingYears vs. Attrition
-ggplot(df, aes(x = Attrition, y = TotalWorkingYears, color = Attrition)) +
-  geom_jitter(width = 0.2, alpha = 0.6) +
-  labs(title = "Total Working Years vs. Attrition", x = "Attrition", y = "Total Working Years") +
-  theme(legend.position = "none") +
-  scale_color_manual(values = c("No" = "blue", "Yes" = "red"))
+ggplot(df, aes(x = Attrition, y = TotalWorkingYears, fill = Attrition)) +
+  geom_boxplot(alpha = 0.5) +
+  stat_summary(fun = mean, geom = "point", shape = 20, size = 4, color = "black") +
+  labs(title = "Total Working Years by Attrition Status",
+       x = "Attrition", y = "Total Working Years") +
+  scale_fill_manual(values = c("No" = "blue", "Yes" = "red")) +
+  theme(legend.position = "none")
 
-#DistanceFromHome vs. Attrition
+
+#Monthly Income vs. Attrition
 ggplot(df, aes(x = Attrition, y = DistanceFromHome, color = Attrition)) +
   geom_jitter(width = 0.2, alpha = 0.6) +
   labs(title = "Distance From Home vs. Attrition", x = "Attrition", y = "Distance From Home") +
@@ -177,11 +188,13 @@ ggplot(stock_option_summary, aes(x = factor(StockOptionLevel), y = count, fill =
   theme(legend.position = "none")
 
 #Age vs. Attrition
-ggplot(df, aes(x = Attrition, y = Age, color = Attrition)) +
-  geom_jitter(width = 0.2, alpha = 0.6) +
-  labs(title = "Age vs. Attrition", x = "Attrition", y = "Age") +
-  theme(legend.position = "none") +
-  scale_color_manual(values = c("No" = "blue", "Yes" = "red"))
+ggplot(df, aes(x = Attrition, y = Age, fill = Attrition)) +
+  geom_boxplot(alpha = 0.5) +
+  stat_summary(fun = mean, geom = "point", shape = 20, size = 4, color = "black") +
+  labs(title = "Age by Attrition Status",
+       x = "Attrition", y = "Age") +
+  scale_fill_manual(values = c("No" = "blue", "Yes" = "red")) +
+  theme(legend.position = "none")
 
 #Define Costs
 CostPerAttrition <- mean(df$MonthlyIncome) * 12 * 0.6  
