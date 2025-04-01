@@ -19,9 +19,10 @@ This project aims to analyze employee attrition at Frito Lay for DDSAnalytics, a
 
 ## Model Performance
 - **Predictive Models:** Both the KNN and Naive Bayes models were developed to predict attrition.
-- **Evaluation Metrics:** The final models were evaluated based on sensitivity and specificity. Both models achieved at least 60% on both metrics on the training and validation sets.
-- **Competition Set Validation:** The KNN predictive model was applied to the unlabeled Competition Set. Predictions were saved in a CSV file (ordered by ID) for further validation.
-
+- **Evaluation Metrics:** The final models were evaluated based on sensitivity and specificity. Both models achieved at least 60% on both metrics on the training and validation sets
+- (KNN- Sensitivity : 0.7548, Specificity : 0.7786)
+- (NB- Sensitivity : 0.7808 Specificity : 0.8095)  
+- **Competition Set Validation:** The NB predictive model was applied to the unlabeled Competition Set. Predictions were saved in a CSV file (ordered by ID) for further validation.
 ## Repository Contents
   - RMarkdown file with the complete analysis and code.
   - Presentation slides.
